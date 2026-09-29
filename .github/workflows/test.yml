@@ -21,3 +21,7 @@ jobs:
     steps:
       - run: |
           if [ -n "$S" ]; then echo "secret satt, längd ${#S}"; else echo "secret tom"; fi
+  slow:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 40
