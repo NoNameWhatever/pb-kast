@@ -1,0 +1,23 @@
+name: test
+on:
+  pull_request:
+    types: [opened, synchronize, edited]
+  push:
+    branches-ignore: [main]
+jobs:
+  ok:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  skipped:
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never
+  secret-check:
+    runs-on: ubuntu-latest
+    env:
+      S: ${{ secrets.TEST_SECRET }}
+    steps:
+      - run: |
+          if [ -n "$S" ]; then echo "secret satt, längd ${#S}"; else echo "secret tom"; fi
