@@ -8,7 +8,7 @@ jobs:
   ok:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ok
+      - run: exit 1
   skipped:
     if: false
     runs-on: ubuntu-latest
