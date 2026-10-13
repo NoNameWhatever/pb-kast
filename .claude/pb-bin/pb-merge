@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""pb-merge <PR>: enda vägen till main (D4:3, D5:20). Körs på användarens uttryckliga kommando.
+Exitkoder: 0 mergad, 1 skriptet vägrade (REFUSED), 2 fel från gh eller git (ERROR)."""
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pbcore import merge  # noqa: E402
+from pbcore.common import EXIT_UNKNOWN, CannotRun, repo_root  # noqa: E402
+
+
+def main(argv):
+    if len(argv) != 1 or not argv[0].isdigit():
+        print("usage: pb-merge <PR number>")
+        return EXIT_UNKNOWN
+    try:
+        return merge.run(repo_root("."), argv[0])
+    except CannotRun as e:
+        print("ERROR (not a refusal by pb-merge): %s" % e)
+        return EXIT_UNKNOWN
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

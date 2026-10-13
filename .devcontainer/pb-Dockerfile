@@ -1,0 +1,69 @@
+# Mallägd (D8:8, D8:9). Handredigeras aldrig; projektets egna systempaket ligger i ci-extra.sh.
+# Byggkontexten är bara .devcontainer/ (D8:8). Stadier: base, ci (grindarnas verktygskedja, samma i CI
+# och lokalt) och dev (ci plus agentens verktyg). Alla FROM är pinnade med digest (D6:27).
+#
+# Restrisk: apt-paketen hämtas vid bygget från Debians repo och är inte pinnade per version.
+
+# --- Verktyg som byggs ur pinnade Go-moduler; sumdb verifierar modulernas checksummor ---------------
+FROM golang:1.27-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195 AS pb-tools
+ENV CGO_ENABLED=0
+RUN GOBIN=/out go install github.com/zricethezav/gitleaks/v8@v8.30.1 \
+ && GOBIN=/out go install -ldflags "-s -w -X github.com/cli/cli/v2/internal/build.Version=v2.101.0" \
+      github.com/cli/cli/v2/cmd/gh@v2.101.0
+
+# --- base: gemensamma kärnverktyg (D12:4: Python 3 och PyYAML för kärnskripten) ---------------------
+FROM debian:bookworm-slim@sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251 AS base
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg git make python3 python3-yaml ripgrep \
+ && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0644 pb-dev/pb-gitconfig /etc/gitconfig
+
+# --- ci: modulernas verktyg, sedan projektets egna systempaket sist ---------------------------------
+FROM base AS ci
+COPY pb-modules/ /opt/pb-modules/
+RUN set -e; for f in /opt/pb-modules/*.sh; do [ -e "$f" ] || continue; echo "== module script $f"; sh "$f"; done
+COPY ci-extra.sh /opt/ci-extra.sh
+RUN sh /opt/ci-extra.sh
+
+# --- dev: agentens verktyg ovanpå ci (D8:9) -----------------------------------------------------------
+FROM ci AS dev
+ARG PB_UID=1000
+# Bryts av `rebuild` så att just det här steget hämtar senaste Claude Code (D8:11, D8:17).
+ARG PB_CLAUDE_CACHEBUST=0
+# Claude Code från Anthropics signerade apt-repo, kanalen `latest`. Nyckelns fingeravtryck kontrolleras
+# och får vara den enda nyckeln i filen (apt litar på varje nyckel i den).
+RUN set -e; \
+    echo "claude-code cachebust: ${PB_CLAUDE_CACHEBUST}"; \
+    install -d -m 0755 /etc/apt/keyrings; \
+    curl -fsSL https://downloads.claude.ai/keys/claude-code.asc -o /etc/apt/keyrings/claude-code.asc; \
+    fprs="$(gpg --show-keys --with-colons /etc/apt/keyrings/claude-code.asc | awk -F: '/^fpr:/ {print $10}' | sort -u)"; \
+    [ "$fprs" = "31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE" ] || { echo "unexpected signing key fingerprint(s): $fprs" >&2; exit 1; }; \
+    echo "deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/latest latest main" > /etc/apt/sources.list.d/claude-code.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends claude-code; \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=pb-tools --chmod=0755 /out/gh /opt/gh/gh
+COPY --from=pb-tools --chmod=0755 /out/gitleaks /usr/local/bin/gitleaks
+COPY --chmod=0755 pb-dev/pb-broker-client /usr/local/bin/pb-broker-client
+COPY --chmod=0755 pb-dev/pb-gh /usr/local/bin/gh
+# Managed settings (D8:19): ägda av root, läge 0644, gäller före projektets egna inställningar.
+COPY --chmod=0644 pb-claude/managed-settings.json /etc/claude-code/managed-settings.json
+COPY --chmod=0644 pb-claude/managed-settings.d/ /etc/claude-code/managed-settings.d/
+# --chmod gäller även katalogerna COPY skapar (0644 utan x-bit gör dem oläsliga för dev), så de sätts om här.
+RUN chmod 0755 /etc/claude-code /etc/claude-code/managed-settings.d
+
+# Icke-root-användare utan sudo. Monteringspunkterna finns i imagen och ägs av dev, så en tom volym
+# ärver ägarskapet vid första montering (D8:14). UID är hostens (build arg) så brokerns socket nås.
+RUN set -e; \
+    [ "${PB_UID}" -ne 0 ] || { echo "PB_UID must not be 0" >&2; exit 1; }; \
+    useradd --uid "${PB_UID}" --create-home --shell /bin/bash dev; \
+    install -d -o dev -g dev -m 0755 /workspace /home/dev/.claude; \
+    install -d -m 0755 /opt/pb /run/pb-broker
+
+ENV DISABLE_UPDATES=1 \
+    CLAUDE_CONFIG_DIR=/home/dev/.claude \
+    PB_BROKER_SOCKET=/run/pb-broker/sock
+USER dev
+WORKDIR /workspace

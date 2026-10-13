@@ -1,0 +1,13 @@
+# python-modulens mönster för testcheckens försvagade tester (D11:12).
+test_files:
+  - "**/tests/**/*.py"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "**/conftest.py"
+skip_markers:
+  - 'pytest\.mark\.skip'
+  - 'pytest\.mark\.skipif'
+  - 'pytest\.mark\.xfail'
+  - 'pytest\.skip\('
+  - 'pytest\.xfail\('
+  - 'pytest_collection_modifyitems'

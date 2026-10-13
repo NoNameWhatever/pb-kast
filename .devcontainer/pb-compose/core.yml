@@ -1,0 +1,50 @@
+# Mallägd (D8:13). Startskriptet skickar filerna med -f i ordningen kärna, moduler, projekt, med fast
+# projektnamn (-p), och kör effektkontrollen mot den sammanslagna konfigurationen före varje start.
+# Variablerna sätts av startskriptet; utan dem vägrar compose (`:?`).
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: pb-Dockerfile
+      target: dev
+      args:
+        PB_UID: ${PB_UID:?set by the start script}
+        PB_CLAUDE_CACHEBUST: ${PB_CLAUDE_CACHEBUST:-0}
+    image: pb-${PB_PROJECT:?set by the start script}-dev
+    user: "${PB_UID:?}:${PB_UID:?}"
+    command: ["sleep", "infinity"]
+    init: true
+    working_dir: /workspace
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - type: volume
+        source: repo
+        target: /workspace
+      - type: volume
+        source: claude
+        target: /home/dev/.claude
+      # Brokerns katalog, bara detta projekts (D6:9, D8:15)
+      - type: bind
+        source: ${PB_BROKER_DIR:?set by the start script}
+        target: /run/pb-broker
+        read_only: true
+      # Den verifierade mallklonen (D6:33)
+      - type: bind
+        source: ${PB_TEMPLATE_CLONE:?set by the start script}
+        target: /opt/pb/template.git
+        read_only: true
+    healthcheck:
+      test: ["CMD", "test", "-d", "/workspace"]
+      interval: 5s
+      retries: 12
+
+# Skapas av init och raderas aldrig av compose, inte heller med `down -v` (D8:14).
+volumes:
+  repo:
+    name: pb-${PB_PROJECT:?set by the start script}-repo
+    external: true
+  claude:
+    name: pb-${PB_PROJECT:?set by the start script}-claude
+    external: true

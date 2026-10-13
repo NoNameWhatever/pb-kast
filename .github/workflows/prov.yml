@@ -1,0 +1,60 @@
+# Prov för mallbytet (python-test med tjänster, D10 beslut 10). Prototyp av det nya python-test-jobbet.
+name: prov-services
+
+on:
+  push:
+    branches: [prov-services]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67
+        command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c pg_stat_statements.track_utility=on -c pg_stat_statements.max=10000
+        env:
+          POSTGRES_PASSWORD: pb-dev-sidecar
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Runner speed (proxy for the suite time)
+        run: |
+          nproc
+          start=$(date +%s.%N)
+          python3 -c "print(sum(i*i for i in range(3*10**7)))"
+          echo "cpu-bench seconds: $(echo "$(date +%s.%N) - $start" | bc)"
+      - name: Build ci image
+        run: |
+          start=$(date +%s)
+          docker build --target ci -t pb-ci -f .devcontainer/pb-Dockerfile .devcontainer
+          echo "ci-image build seconds: $(( $(date +%s) - start ))"
+      - name: Test
+        run: >-
+          docker run --rm --network host
+          -v "$PWD:/workspace" -w /workspace
+          -e DATABASE_URL=postgresql://postgres:pb-dev-sidecar@localhost:5432/app
+          -e REDIS_URL=redis://localhost:6379/0
+          pb-ci .claude/pb-bin/pb-gate test

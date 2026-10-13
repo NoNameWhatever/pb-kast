@@ -1,0 +1,2 @@
+# Checkar som pb-merge kräver gröna eller överhoppade (D5:20). Kärnfil; moduler lägger egna filer i katalogen.
+core-checks

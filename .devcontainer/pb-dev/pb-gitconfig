@@ -1,0 +1,9 @@
+# /etc/gitconfig i dev- och ci-imagen (ägs av root, D8:15).
+[safe]
+	# Mallklonen är monterad read-only och ägs av hosten; utan detta ignorerar copier --vcs-ref (D1).
+	directory = /opt/pb/template.git
+	directory = /workspace
+[credential "https://github.com"]
+	helper = /usr/local/bin/pb-broker-client credential
+[init]
+	defaultBranch = main

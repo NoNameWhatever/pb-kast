@@ -1,0 +1,8 @@
+# python-modulens exempelsökvägar som .gitignore måste ignorera (D6:22, D8:1).
+.venv/pyvenv.cfg
+sub/.venv/pyvenv.cfg
+__pycache__/x.pyc
+sub/__pycache__/x.pyc
+.pytest_cache/x
+.ruff_cache/x
+sub/.pb-ruff-x.toml

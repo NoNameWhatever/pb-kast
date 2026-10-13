@@ -1,0 +1,5 @@
+# Undantag för secret scan (skelett, strict; D6:20, D6:26). Standardreglerna ska alltid vara
+# på, så raden nedan får inte tas bort. Lägg undantag här, aldrig som `gitleaks:allow` i koden
+# (inline-undantag ignoreras av skriptet).
+[extend]
+useDefault = true

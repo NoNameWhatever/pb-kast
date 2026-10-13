@@ -1,0 +1,42 @@
+# postgres-modulens sidecar (D8:13, D8:22, D8:28). Mallägd. Imagen är pinnad med digest och är densamma som CI:s
+# service-container i .github/workflows/pb-postgres.yml. Startas med preload av pg_stat_statements, eftersom
+# checken för destruktiva migrationer läser den SQL som faktiskt körs; utan preload är checken falskt grön.
+services:
+  postgres:
+    image: postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67
+    # Kör som postgres direkt (UID 999 i imagen), så att sidecaren inte behöver några capabilities.
+    user: "999:999"
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - pg_stat_statements.track_utility=on
+      - -c
+      - pg_stat_statements.max=10000
+    environment:
+      # Sidecar utan publicerade portar: lösenordet är ingen secret (D6:24) och står i klartext.
+      POSTGRES_PASSWORD: pb-dev-sidecar
+      POSTGRES_DB: app
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      retries: 12
+
+  app:
+    environment:
+      DATABASE_URL: postgresql://postgres:pb-dev-sidecar@postgres:5432/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+# Modulens egen volym: går att återskapa (D8:14).
+volumes:
+  pgdata: {}

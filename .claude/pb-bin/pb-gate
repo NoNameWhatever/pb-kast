@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""pb-gate <test|lint|run|check|fmt> [filer...]: dispatchern bakom `make` (D5:5, D8:1).
+Utdata enligt D5:32. Exitkoder: 0 godkänt, 1 fel, 2 kunde inte köras."""
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pbcore import gate  # noqa: E402
+from pbcore.common import EXIT_UNKNOWN, CannotRun, repo_root  # noqa: E402
+
+
+def main(argv):
+    if not argv or argv[0] not in gate.TARGETS:
+        print("usage: pb-gate <%s> [files...]" % "|".join(gate.TARGETS))
+        return EXIT_UNKNOWN
+    try:
+        root = repo_root(".")
+        files = argv[1:] or None
+        return gate.run_gate(root, argv[0], files if argv[0] == "fmt" else None)
+    except CannotRun as e:
+        print("cannot run %s: %s" % (argv[0], e))
+        return EXIT_UNKNOWN
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

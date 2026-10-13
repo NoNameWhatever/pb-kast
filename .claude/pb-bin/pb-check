@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""pb-check <namn>: kärnans lätta kontroller (D5). Utdata enligt D5:32.
+Exitkoder: 0 godkänt, 1 fel, 2 kunde inte köras."""
+import argparse
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pbcore import pr, structure  # noqa: E402
+from pbcore.common import EXIT_UNKNOWN, CannotRun, LOG_REL, Report, repo_root  # noqa: E402
+
+CHECKS = ("roots", "units", "level", "format", "branch", "gitignore", "manifest", "test-guard", "baseline")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="pb-check")
+    ap.add_argument("check", choices=CHECKS)
+    ap.add_argument("--base", default="origin/main")
+    ap.add_argument("--head", default="HEAD")
+    ap.add_argument("--pr-body-file")
+    ap.add_argument("--branch")
+    ap.add_argument("--root")
+    a = ap.parse_args(argv)
+    root = None
+    try:
+        root = repo_root(a.root or ".")
+        if a.check == "roots":
+            rep = structure.check_roots(root)
+        elif a.check == "units":
+            rep = structure.check_units(root)
+        elif a.check == "branch":
+            rep = structure.check_branch(root, a.branch)
+        elif a.check == "gitignore":
+            rep = structure.check_gitignore(root)
+        elif a.check == "manifest":
+            rep = structure.check_manifest(root)
+        elif a.check == "level":
+            rep = pr.check_level(root, a.base, a.head, a.pr_body_file)
+        elif a.check == "format":
+            rep = pr.check_format(root, a.base, a.head, a.pr_body_file)
+        elif a.check == "baseline":
+            rep = pr.check_baseline(root, a.base, a.head)
+        else:
+            rep = pr.check_test_guard(root, a.base, a.head, a.pr_body_file)
+        return rep.emit(root)
+    except CannotRun as e:
+        print("cannot run %s: %s" % (a.check, e))
+        if root is not None:
+            r = Report(a.check)
+            r.errors.append("cannot run: %s" % e)
+            os.makedirs(os.path.join(str(root), os.path.dirname(LOG_REL)), exist_ok=True)
+            with open(os.path.join(str(root), LOG_REL), "a" if os.environ.get("PB_LOG_APPEND") else "w") as f:
+                f.write("cannot run: %s\n" % e)
+        return EXIT_UNKNOWN
+
+
+if __name__ == "__main__":
+    sys.exit(main())

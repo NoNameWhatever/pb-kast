@@ -1,0 +1,7 @@
+# postgres-modulens golv (D8:34): mönster på filnamn, alla strict. Gäller oavsett layout.
+patterns:
+  "**/migrations/**": strict
+  "**/alembic/**": strict
+  "**/alembic.ini": strict
+  "**/*.sql": strict
+  ".claude/pb-postgres.yml": strict

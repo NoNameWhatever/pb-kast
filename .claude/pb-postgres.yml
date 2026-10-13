@@ -1,0 +1,11 @@
+# Migreringskommandot för checken för destruktiva migrationer (D8:28, D8:40). Skelett i modulgolvet (strict).
+#
+# migrate: kommandot som tillämpar projektets migreringar mot databasen i $DATABASE_URL (även PGHOST, PGPORT,
+#   PGUSER, PGPASSWORD och PGDATABASE är satta). Körs från repots rot, först mot merge-basen och sedan mot PR:en.
+#   `none` är tillåtet så länge ingen spårad fil matchar **/migrations/**, **/alembic/** eller **/*.sql;
+#   finns en sådan fil är `none` rött.
+#   Exempel: cd backend && uv run alembic upgrade head
+# bookkeeping_tables: migreringsverktygets egna tabeller utöver modulens kända (alembic_version,
+#   django_migrations, schema_migrations med flera); satser mot dem räknas inte.
+migrate: none
+bookkeeping_tables: []

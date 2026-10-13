@@ -1,0 +1,9 @@
+# Ändras aldrig för hand. Skrivs av copier (D1:10).
+_commit: v0.2.18-11-g62b267f
+_src_path: ../tmpl
+browser: false
+external_exposure: false
+postgres: true
+project_name: demo
+python: true
+typescript: false

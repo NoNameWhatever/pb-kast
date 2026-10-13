@@ -1,0 +1,7 @@
+# Projektets tillägg till sökvägskartan (skelett). Här får du bara lägga till:
+# kartan tar högsta matchande nivå över alla kartfiler, så en rad här kan höja
+# men aldrig sänka mallens golv i `.claude/pb-path-map/`. Varje katalog i roten
+# som git spårar måste vara klassad i någon kartfil.
+roots: {}
+
+patterns: {}

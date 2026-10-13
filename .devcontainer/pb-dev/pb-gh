@@ -1,0 +1,9 @@
+#!/bin/sh
+# Wrapper runt gh (D6:9). Installeras som /usr/local/bin/gh; riktiga gh ligger i /opt/gh/gh.
+# GH_TOKEN läses av gh vid start, så en färsk token hämtas från brokern vid varje anrop.
+set -e
+token="$(/usr/local/bin/pb-broker-client token)" || {
+  echo "gh: no GitHub token (is the broker running on the host?)" >&2
+  exit 1
+}
+GH_TOKEN="$token" exec "${PB_GH_REAL:-/opt/gh/gh}" "$@"

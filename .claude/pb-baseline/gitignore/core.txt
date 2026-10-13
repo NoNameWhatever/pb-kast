@@ -1,0 +1,11 @@
+# Exempelsökvägar som .gitignore måste ignorera (D6:22). Kontrolleras med
+# `git check-ignore -q --no-index`. Moduler lägger egna filer i katalogen.
+.env
+.env.local
+.env.production.local
+sub/.env
+x.pem
+x.key
+secrets/x
+id_ed25519
+.pb-logs/gate.log

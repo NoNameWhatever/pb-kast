@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""pb-hook-lint: PostToolUse-hook för Edit|Write (D11:10). Läser hookens JSON på stdin.
+Ändrar aldrig något och fallerar öppet (exit 0 utan utdata)."""
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from pbcore import hook
+    sys.exit(hook.run(sys.stdin.read()))
+except Exception:  # en hook som kraschar ska aldrig störa arbetet; grinden bär kravet
+    sys.exit(0)

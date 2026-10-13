@@ -1,0 +1,6 @@
+# Trösklar för när agenten föreslår hygienkörning och säkerhetsgenomgång (skelett).
+# Startvärdena är gissningar som justeras efter piloten. Ändras genom en vanlig PR.
+small_items: 10            # N: öppna sub-issues som utlöser ett hygienförslag
+small_items_age_weeks: 4   # T: ålder på äldsta sub-issue som utlöser ett hygienförslag
+docs_review_merges: 15     # M: mergade PR:er sedan senaste hygienkörning som utlöser dokumentgranskning
+security_review_commits: 30  # S: commits på main sedan senaste säkerhetsgenomgång

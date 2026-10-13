@@ -1,0 +1,14 @@
+# python-modulens golv (D8:34): mönster på filnamn, alla strict. Gäller oavsett layout.
+# Modulens första enhet klassas här, annars är rotkatalogen oklassad (D5:22). Koden är standard; bara
+# manifest och låsfiler nedan är strict.
+roots:
+  backend: standard
+
+patterns:
+  "**/pyproject.toml": strict
+  "**/uv.lock": strict
+  "**/uv.toml": strict
+  "**/.python-version": strict
+  "**/requirements*.txt": strict
+  "**/setup.py": strict
+  "**/setup.cfg": strict

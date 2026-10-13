@@ -1,0 +1,24 @@
+# Kärnans sökvägskarta (D3:16, D5:15, D6:19-20). Två nivåer: strict och standard.
+# Effektiv nivå per sökväg är högsta matchande nivå över alla kartfiler (max-wins),
+# så golvet kan bara höjas. Okänd sökväg är standard (D3:17).
+roots:
+  .claude: strict
+  .devcontainer: strict
+  .github: strict
+  project-docs: standard
+
+patterns:
+  # Skärpt: fristående filer och filer som verkar i alla kataloger
+  ".copier-answers.yml": strict
+  "**/.gitattributes": strict
+  ".gitleaks.toml": strict
+  ".gitleaksignore": strict
+  "**/Dockerfile*": strict
+  "**/compose*.y*ml": strict
+  "**/docker-compose*.y*ml": strict
+  "**/.dockerignore": strict
+  # Standard: saknar felrisk som motiverar strict
+  "CLAUDE.md": standard
+  "Makefile": standard
+  "README.md": standard
+  ".gitignore": standard

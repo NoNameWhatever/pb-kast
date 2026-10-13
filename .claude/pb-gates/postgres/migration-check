@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""migration-check: postgres-modulens check för destruktiva migrationer (D8:28, D6:39). Körs av modulens
+integrationsjobb, inte av `pb-gate`. Utdata enligt D5:32; exitkoder 0 godkänt, 1 fel, 2 kunde inte köras."""
+import argparse
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import pgcheck  # noqa: E402
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="migration-check")
+    ap.add_argument("--base-ref", default="origin/main")
+    ap.add_argument("--head-ref", default="HEAD")
+    ap.add_argument("--database-url", default=os.environ.get("DATABASE_URL"))
+    ap.add_argument("--root", default=os.getcwd())
+    a = ap.parse_args()
+    try:
+        errors, note = pgcheck.run_check(a.root, a.base_ref, a.head_ref, a.database_url)
+    except (pgcheck.CannotRun, pgcheck.pgclassify.subprocess.TimeoutExpired) as e:
+        print("cannot run migration-check: %s" % e)
+        return 2
+    if errors:
+        for line in errors[:40]:
+            print(line)
+        print("migration-check: %d problem(s)" % len(errors))
+        return 1
+    print("ok migration-check (%s)" % note)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

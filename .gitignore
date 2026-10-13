@@ -1,0 +1,27 @@
+# Skelett (D3:13). Skyddas genom effekt, inte text: kontrollen kör `git check-ignore`
+# mot exempelsökvägarna i .claude/pb-baseline/gitignore/ (D6:22). Ta inte bort raderna
+# nedan och lägg inte till negationer för dem.
+
+# Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+secrets/
+
+# Grindarnas logg (D5:32)
+.pb-logs/
+
+# python (modulens exempelsökvägar kontrolleras av pb-baseline/gitignore/python.txt)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.pb-ruff-*.toml
+
+
+

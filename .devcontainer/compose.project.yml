@@ -1,0 +1,3 @@
+# Projektets egna tillägg till compose (skelett, D8:13). Slås ihop efter kärnan, så effektkontrollen
+# på hosten granskar det sammanslagna resultatet: härdningen i pb-compose/core.yml går inte att skriva över.
+services: {}

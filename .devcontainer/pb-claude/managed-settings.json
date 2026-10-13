@@ -1,0 +1,59 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make test)",
+      "Bash(make lint)",
+      "Bash(make run)",
+      "Bash(make check)",
+      "Bash(make fmt)"
+    ],
+    "deny": [
+      "Edit(//workspace/.claude/rules/pb-*)",
+      "Edit(//workspace/.claude/agents/pb-*)",
+      "Edit(//workspace/.claude/skills/pb-*/**)",
+      "Edit(//workspace/.claude/pb-*/**)",
+      "Edit(//workspace/.claude/settings.json)",
+      "Edit(//workspace/.github/workflows/pb-*)",
+      "Edit(//workspace/.copier-answers.yml)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/secrets/**)",
+      "Read(//home/dev/.claude/.credentials.json)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr merge *--admin*)",
+      "Bash(gh pr merge *--auto*)",
+      "Agent(general-purpose)",
+      "Agent(claude)",
+      "Agent(fork)",
+      "RemoteTrigger"
+    ],
+    "ask": [
+      "Bash(.claude/pb-bin/pb-merge *)"
+    ]
+  },
+  "autoMemoryEnabled": false,
+  "disableClaudeAiConnectors": true,
+  "env": {
+    "CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/workspace/.claude/pb-bin/pb-hook-lint",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "requiredMinimumVersion": "2.1.284"
+}

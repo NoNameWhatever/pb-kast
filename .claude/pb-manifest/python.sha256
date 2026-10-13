@@ -1,0 +1,16 @@
+f38bb45fcf868c00c8e4937a9e024204c38e6fdc6d337a2cbd094a8b0254fa30  .claude/pb-baseline/gitignore/python.txt
+6792e0342639ceae37c40835ac8b5529681dd56eaaaa0a4b69ddbcd26f49dbae  .claude/pb-expected-checks/python.txt
+6089ed1fc3beb608656ea07be5c1c49e907c5b8b1a3b26fba26e2e8d02d81e4f  .claude/pb-gates/python/check-file
+74905460892b501ba16bf14da3eb4c5d297fb6c0ca0cbc6e65e75f3b8e0fc7ab  .claude/pb-gates/python/fmt
+036b0aa7e55ff1c39de0e482e1ca9017b8ee3b98768dc14b0a962884027811ca  .claude/pb-gates/python/lint
+7a14b5429d69135e387e2779a0212844cdeaa9f51115e670ecbf415f2eab9271  .claude/pb-gates/python/manifests
+9c085beef11036f488d55ea8d2791b3e824cc5e6688d510a3b80715b692825d0  .claude/pb-gates/python/pygate.py
+82cbaa0d12822ecfc0c0260e2fce2abaf883d3ec71d4a66c4f5c4c0489bcc38f  .claude/pb-gates/python/test
+5460ce8a95a6564450204e795879bd5484c7140c4fb5aca1032584a1fb1eaa66  .claude/pb-guides/python.md
+898b7ce705d5296ed3cc05aa2fc03925191f667c485275e3d52af8363f3b5318  .claude/pb-path-map/python.yml
+ff93da14760dd3953bc0eccd8720192eb4b94d03fcc4573d28e8ed6217b167e7  .claude/pb-review/python.md
+afd3eb2f3e614682c161d550477b9cfea62f6a99e536bd90f80c1e7a6b88b7d7  .claude/pb-test-guard/python.yml
+9f040d408fcbaada1404bd726562ce62af5291bb4e239c0c64dbf50b25335ec0  .devcontainer/pb-modules/python-tools.lock
+dc3bba0a98bc833a3fdded78f4a87da56c4e87b2522862ab4d068084c30dc1cc  .devcontainer/pb-modules/python-uv.toml
+cae796b30336a51a9e84d5966d08ded41fd4736323dc0d90ec986ffe1a49ef0b  .devcontainer/pb-modules/python.sh
+99a11e53c0d83e82fe6df61c825f3d86741a4e305947aaba9818bd5d5dda3211  .github/workflows/pb-python.yml

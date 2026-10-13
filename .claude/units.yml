@@ -1,0 +1,9 @@
+# Kodenheter (skelett, strict via `.claude/`). En enhet är en katalog med en moduls
+# manifest. Grinden kör verktygen per enhet och blir röd för varje manifest som
+# varken är en deklarerad enhet eller står under `exclude:`. Modulerna skapar
+# den första enheten.
+# Format: units: [{path: backend, module: python}]
+units:
+  - {path: backend, module: python}
+
+exclude: []

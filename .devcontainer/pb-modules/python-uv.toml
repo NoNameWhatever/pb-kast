@@ -1,0 +1,5 @@
+# Golvet för uv i imagen (D8:29). Projektets uv-konfig läses före den här filen och kan skriva över
+# skalära värden, så modulcheckarna i adaptern är röda om projektet sätter samma nycklar.
+exclude-newer = "7 days"
+no-build = true
+python-preference = "only-managed"
