@@ -1,0 +1,166 @@
+"""pb-browse (D11:13): tar en skärmdump av appen i en headless Chromium som körs i sidecaren `browser`, och listar
+konsolfel, sidfel och misslyckade anrop enligt utdatakontraktet (D5:32).
+
+Skriptet kör i dev-containern och ansluter med Playwrights klient till `run-server` i sidecaren. Chromium körs alltså
+utanför agentens container (D11:13). Skyddet är i två lager: sidecaren ligger i ett internt compose-nätverk utan
+internet, och skriptet vägrar andra värdar än dev-tjänstens nätverksalias (`pb-app`) och avbryter sidans anrop till andra värdar.
+Sidans WebSocket-anslutningar avbryts inte av skriptet; nätverket är det som hindrar dem."""
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from .common import EXIT_FAIL, EXIT_OK, EXIT_UNKNOWN, LOG_REL, MAX_SHOWN, CannotRun
+
+ALLOWED_HOSTS = ("pb-app",)
+DEFAULT_WS = "ws://browser:3000/"
+SCREENSHOT_DIR = ".pb-screenshots"
+CLIENT_LIB = "/opt/pb-browser/lib"
+KEEP_SCREENSHOTS = 50
+LOCAL_SCHEMES = ("data", "blob", "about")
+
+
+class Refused(Exception):
+    """Skriptet vägrar en URL. Skiljs från fel i sidan (båda ger exit 1, men vägran har prefixet `refused:`)."""
+
+
+def check_url(url, allowed=ALLOWED_HOSTS):
+    """Vägrar allt utom http(s) mot en tillåten värd, utan inloggningsuppgifter i URL:en."""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise Refused("only http and https URLs are allowed (got %r)" % (parts.scheme or url[:20]))
+    if parts.username or parts.password:
+        raise Refused("a URL with credentials is not allowed")
+    host = (parts.hostname or "").lower()
+    if host not in allowed:
+        raise Refused("host %r is not reachable from here; use the app alias (%s), for example http://pb-app:8000/"
+                      % (host, ", ".join(allowed)))
+    return parts
+
+
+def slug(parts):
+    text = "%s%s" % (parts.hostname, parts.path)
+    return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-").lower()[:50] or "page"
+
+
+def screenshot_path(root, parts, now=None):
+    now = now or datetime.now(timezone.utc)
+    d = Path(root) / SCREENSHOT_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    return d / ("%s-%s.png" % (slug(parts), now.strftime("%Y%m%dT%H%M%S%fZ")))
+
+
+def prune(root, keep=KEEP_SCREENSHOTS):
+    files = sorted((Path(root) / SCREENSHOT_DIR).glob("*.png"), key=lambda p: p.name)
+    for old in files[:-keep] if keep else files:
+        old.unlink()
+
+
+def load_client():
+    # insert(0) gör att den sist insatta hamnar först: åsidosättningen ska vinna över den installerade klienten.
+    for extra in (CLIENT_LIB, os.environ.get("PB_BROWSER_LIB")):
+        if extra and os.path.isdir(extra) and extra not in sys.path:
+            sys.path.insert(0, extra)
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        raise CannotRun("the Playwright client is not installed (the browser module installs it in the dev image)")
+    return sync_playwright
+
+
+def browse(url, root, ws=None, allowed=ALLOWED_HOSTS, viewport=(1280, 800), full_page=False, settle_ms=500,
+           timeout_ms=30000, now=None):
+    """Ger (skärmdumpens sökväg eller None, felrader). Raises Refused och CannotRun."""
+    parts = check_url(url, allowed)
+    sync_playwright = load_client()
+    ws = ws or os.environ.get("PB_BROWSER_WS") or DEFAULT_WS
+    errors, blocked, failed_urls = [], set(), set()
+    shot = None
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.connect(ws, timeout=15000)
+        except Exception as e:  # Playwrights fel är många; alla betyder att sidecaren inte nås
+            raise CannotRun("cannot reach the browser sidecar at %s: %s (the containers must be running, ask the user to start them)"
+                            % (ws, str(e).strip().splitlines()[0][:160] if str(e).strip() else type(e).__name__))
+        try:
+            context = browser.new_context(viewport={"width": viewport[0], "height": viewport[1]})
+
+            def gate(route):
+                req = route.request
+                p_ = urlsplit(req.url)
+                if p_.scheme in LOCAL_SCHEMES or (p_.hostname or "").lower() in allowed:
+                    route.continue_()
+                else:
+                    blocked.add(req.url)
+                    errors.append("%s: blocked request to host %s (only %s is reachable)" % (req.url[:120], p_.hostname, ", ".join(allowed)))
+                    route.abort()
+
+            context.route("**/*", gate)
+            page = context.new_page()
+
+            def on_console(msg):
+                if msg.type != "error":
+                    return
+                loc = msg.location or {}
+                text = msg.text.splitlines()[0][:200] if msg.text else ""
+                if text.startswith("Failed to load resource") or (loc.get("url") in blocked):
+                    return  # samma sak rapporteras som anropsfel nedan
+                errors.append("%s:%s: console error: %s" % (loc.get("url") or url, loc.get("lineNumber") or 0, text))
+
+            def on_pageerror(err):
+                errors.append("%s: page error: %s" % (url, str(err).splitlines()[0][:200] if str(err) else "unknown"))
+
+            def on_requestfailed(req):
+                if req.url in blocked:
+                    return
+                failed_urls.add(req.url)
+                errors.append("%s: request failed (%s)" % (req.url[:120], (req.failure or "unknown")))
+
+            def on_response(resp):
+                if resp.status >= 400:
+                    errors.append("%s: HTTP %d" % (resp.url[:120], resp.status))
+
+            page.on("console", on_console)
+            page.on("pageerror", on_pageerror)
+            page.on("requestfailed", on_requestfailed)
+            page.on("response", on_response)
+            try:
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+                page.wait_for_timeout(settle_ms)
+            except Exception as e:
+                errors.append("%s: navigation failed: %s" % (url, str(e).strip().splitlines()[0][:200] if str(e).strip() else type(e).__name__))
+            try:
+                data = page.screenshot(full_page=full_page, timeout=timeout_ms)
+                shot = screenshot_path(root, parts, now)
+                shot.write_bytes(data)
+                prune(root)
+            except Exception as e:
+                errors.append("%s: screenshot failed: %s" % (url, str(e).strip().splitlines()[0][:200] if str(e).strip() else type(e).__name__))
+        finally:
+            browser.close()
+    return shot, errors
+
+
+def run(url, root, out=print, **kw):
+    """Utdata och exitkod enligt D5:32."""
+    log = Path(root) / LOG_REL
+    log.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shot, errors = browse(url, root, **kw)
+    except Refused as e:
+        out("refused: %s" % e)
+        return EXIT_FAIL
+    except CannotRun as e:
+        out("cannot run pb-browse: %s" % e)
+        return EXIT_UNKNOWN
+    shown = os.path.relpath(shot, root) if shot else "none"
+    log.write_text("== browse %s\n%s\nscreenshot: %s\n" % (url, "\n".join(errors) or "ok", shown), encoding="utf-8")
+    if not errors:
+        out("ok browse %s screenshot: %s" % (url, shown))
+        return EXIT_OK
+    for line in errors[:MAX_SHOWN]:
+        out(line)
+    out("browse: %d error(s); screenshot: %s; full log: %s" % (len(errors), shown, LOG_REL))
+    return EXIT_FAIL

@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""pb-merge <PR> [--wait SEKUNDER]: enda vägen till main (D4:3, D5:20). Körs på användarens uttryckliga kommando.
+Väntande checkar väntas in, som mest 540 s (ett anrop i Claude Code dör vid 600 s: kör med timeout 600000 eller i
+bakgrunden). Exitkoder: 0 mergad, 1 skriptet vägrade (REFUSED), 2 fel från gh eller git (ERROR)."""
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from pbcore import merge  # noqa: E402
+from pbcore.common import EXIT_UNKNOWN, CannotRun, repo_root  # noqa: E402
+
+
+def main(argv):
+    timing = {}
+    if len(argv) == 3 and argv[1] == "--wait" and argv[2].isdigit():
+        timing["wait"] = int(argv[2])
+        argv = argv[:1]
+    if len(argv) != 1 or not argv[0].isdigit():
+        print("usage: pb-merge <PR number> [--wait SECONDS]")
+        return EXIT_UNKNOWN
+    try:
+        return merge.run(repo_root("."), argv[0], **timing)
+    except CannotRun as e:
+        print("ERROR (not a refusal by pb-merge): %s" % e)
+        return EXIT_UNKNOWN
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
